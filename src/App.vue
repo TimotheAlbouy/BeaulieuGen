@@ -76,7 +76,7 @@ export default {
 		};
 	},
 	async mounted() {
-		const endpoint = "/textes/";
+		const endpoint = "textes/";
 		this.entranceOptions = (await axios.get(endpoint + "entree.txt")).data.split(/\r?\n/);
 		this.universalPrayerOptions = (await axios.get(endpoint + "priere_universelle.txt")).data.split(/\r?\n/);
 		this.offertoryOptions = (await axios.get(endpoint + "offertoire.txt")).data.split(/\r?\n/);
@@ -134,7 +134,7 @@ export default {
 				this.doc.setFont(undefined, "normal");
 		},
 		async getSongs() {
-			const endpoint = "/textes/chants/";
+			const endpoint = "textes/chants/";
 			const entranceSong = (await axios.get(endpoint + this.entrance + ".txt"))
 				.data.split(/\r?\n\r?\n/);
 			const offertorySong = (await axios.get(endpoint + this.offertory + ".txt"))
