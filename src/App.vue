@@ -72,7 +72,8 @@ export default {
 			universalPrayerOptions: [],
 			offertoryOptions: [],
 			communionOptions: [],
-			sendingOptions: []
+			sendingOptions: [],
+			verseNumber: 0
 		};
 	},
 	async mounted() {
@@ -94,6 +95,7 @@ export default {
 		addSong(title, song) {
 			const width = this.doc.internal.pageSize.getWidth();
 			const height = this.doc.internal.pageSize.getHeight();
+			this.verseNumber = 1;
 			this.doc.setFontSize(30);
 			this.doc.text(title, 10, 20);
 			this.doc.setFontSize(20);
@@ -127,11 +129,15 @@ export default {
 		addParagraph(paragraph, x, y) {
 			this.doc.setFontSize(20);
 			const isChorus = paragraph[0].startsWith("R.");
-			if (isChorus)
+			if (isChorus) {
 				this.doc.setFont(undefined, "bold");
-			this.doc.text(paragraph, x, y);
-			if (isChorus)
+				this.doc.text(paragraph, x, y);
 				this.doc.setFont(undefined, "normal");
+			} else {
+				paragraph[0] = this.verseNumber + ". " + paragraph[0];
+				this.doc.text(paragraph, x, y);
+				this.verseNumber++;
+			}
 		},
 		async getSongs() {
 			const endpoint = "textes/chants/";
@@ -149,7 +155,10 @@ export default {
 			const nextWednesday = new Date();
 			while (nextWednesday.getDay() !== 3)
 				nextWednesday.setDate(nextWednesday.getDate() + 1);
-
+			return nextWednesday;
+		},
+		getNextWednesdayDigits() {
+			const nextWednesday = this.getNextWednesday();
 			const year = nextWednesday.getFullYear();
 			const month = nextWednesday.getMonth() + 1;
 			const day = nextWednesday.getDate();
@@ -163,21 +172,23 @@ export default {
 			str += day;
 			return str;
 		},
+		getNextWednesdayFrench() {
+			const months = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+			const nextWednesday = this.getNextWednesday();
+			const year = nextWednesday.getFullYear();
+			const month = months[nextWednesday.getMonth()];
+			const day = nextWednesday.getDate();
+			return "Mercredi " + day + " " + month + " " + year;
+		},
 		async getPsalmChorus() {
-			const endpoint = "https://api.aelf.org/v1/messes/" + this.getNextWednesday() + "/france";
+			const endpoint = "https://api.aelf.org/v1/messes/" + this.getNextWednesdayDigits() + "/france";
 			const { data } = await axios.get(endpoint);
-
-			for (let lect of data.messes[0].lectures) {
-				if (lect.type == "psaume") {
-					let lenChorus = lect.refrain_psalmique.length;
-					return lect.refrain_psalmique.substring(3, lenChorus - 4);
-				}
-			}
-
+			for (let lect of data.messes[0].lectures)
+				if (lect.type == "psaume")
+					return lect.refrain_psalmique.replaceAll(/(<[^>]+>)/g, "");
 			return null;
 		},
 		async savePdf() {
-			const nextWednesday = this.getNextWednesday();
 			const psalmChorus = await this.getPsalmChorus();
 			const [entranceSong, offertorySong, communionSong, sendingSong] = await this.getSongs();
 			
@@ -193,9 +204,13 @@ export default {
 			this.doc.setFillColor(33, 33, 33);
 			this.doc.rect(0, 0, width, height, 'F');
 			this.doc.setFontSize(60);
-			this.doc.text("Messe du " + nextWednesday, width/2, height/3, { align: 'center' });
+			const title = "Messe du " + this.getNextWednesdayFrench();
+			const splitTitle = this.doc.splitTextToSize(title, width - 40);
+			this.doc.text(splitTitle, width/2, height/3, { align: 'center' });
 			this.doc.setFontSize(30);
-			this.doc.text("Aumônerie de Beaulieu", width/2, height/2, { align: 'center' });
+			this.doc.setTextColor(171, 171, 171);
+			this.doc.text("Aumônerie de Beaulieu", width/2, 2*height/3, { align: 'center' });
+			this.doc.setTextColor(255, 255, 255);
 			
 			// page 2 (entrance)
 			this.addPage();
@@ -207,7 +222,8 @@ export default {
 			// page 4 (psalm)
 			this.addPage();
 			this.doc.setFontSize(30);
-			this.doc.text(psalmChorus, width/2, height/2, { align: 'center' });
+			const splitPsalmChorus = this.doc.splitTextToSize(psalmChorus, width - 40);
+			this.doc.text(splitPsalmChorus, width/2, height/2, { align: 'center' });
 
 			// page 5 (empty)
 			this.addPage();
@@ -215,7 +231,8 @@ export default {
 			// page 6 (universal prayer)
 			this.addPage();
 			this.doc.setFontSize(30);
-			this.doc.text(this.universalPrayer, width/2, height/2, { align: 'center' });
+			const splitUniversalPrayer = this.doc.splitTextToSize(this.universalPrayer, width - 40);
+			this.doc.text(splitUniversalPrayer, width/2, height/2, { align: 'center' });
 
 			// page 7 (empty)
 			this.addPage();
@@ -243,7 +260,7 @@ export default {
 			this.doc.setFontSize(30);
 			this.doc.text("Bonne soirée, et souriez, Jésus vous aime !", width/2, height/2, { align: 'center' });
 
-			const name = "Messe du " + nextWednesday;
+			const name = "Messe du " + this.getNextWednesdayDigits();
 			this.doc.save(name);
 		}
 	}

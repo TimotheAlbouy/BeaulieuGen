@@ -1,4 +1,5 @@
-# beaulieugen
+# BeaulieuGen
+Génération de PDF pour les messes de l'aumônerie de Beaulieu
 
 ## Project setup
 ```
