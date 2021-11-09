@@ -52,6 +52,12 @@ import {
 import axios from "axios";
 import jsPDF from "jspdf";
 
+import {
+	KYRIE_LATIN, KYRIE_FRENCH,
+	SANCTUS_LATIN, SANCTUS_FRENCH,
+	AGNUS_LATIN, AGNUS_FRENCH
+} from "./constants";
+
 export default {
 	name: "App",
 	components: {
@@ -92,39 +98,58 @@ export default {
 			this.doc.setFillColor(33, 33, 33);
 			this.doc.rect(0, 0, width, height, 'F');
 		},
-		addSong(title, song) {
+		addOrdinarySong(title, latinLyrics, frenchLyrics) {
+			const width = this.doc.internal.pageSize.getWidth();
+			this.doc.setFontSize(30);
+			this.doc.text(title, 10, 20);
+			this.doc.setFontSize(20);
+			this.doc.setFont(undefined, "italic");
+			this.doc.text("Latin", 20, 40);
+			this.doc.text("Français", width/2 + 10, 40);
+			this.doc.setFont(undefined, "normal");
+			const splitLatin = this.doc.splitTextToSize(latinLyrics, width/2 - 30);
+			this.doc.text(splitLatin, 20, 60);
+			const splitFrench = this.doc.splitTextToSize(frenchLyrics, width/2 - 30);
+			this.doc.text(splitFrench, width/2 + 10, 60);
+		},
+		addNonOrdinarySong(title, lyrics) {
 			const width = this.doc.internal.pageSize.getWidth();
 			const height = this.doc.internal.pageSize.getHeight();
 			this.verseNumber = 1;
 			this.doc.setFontSize(30);
 			this.doc.text(title, 10, 20);
 			this.doc.setFontSize(20);
-			if (song.length == 1) {
-				const splitP1 = this.doc.splitTextToSize(song[0], width - 40);
+			const lineHeight = this.doc.getTextDimensions('text').h;
+			if (lyrics.length == 1) {
+				const splitP1 = this.doc.splitTextToSize(lyrics[0], width - 40);
 				this.addParagraph(splitP1, 20, height/3);
-			} else if (song.length == 2) {
-				const splitP1 = this.doc.splitTextToSize(song[0], width - 40);
-				this.addParagraph(splitP1, 20, height/3);
-				const splitP2 = this.doc.splitTextToSize(song[1], width - 40);
-				this.addParagraph(splitP2, 20, 2*height/3);
-			} else if (song.length == 3) {
-				const splitP1 = this.doc.splitTextToSize(song[0], width - 40);
-				this.addParagraph(splitP1, 20, height/4);
-				const splitP2 = this.doc.splitTextToSize(song[1], width - 40);
-				this.addParagraph(splitP2, 20, height/2);
-				const splitP3 = this.doc.splitTextToSize(song[2], width - 40);
-				this.addParagraph(splitP3, 20, 3*height/4);
-			} else if (song.length >= 4) {
-				const splitP1 = this.doc.splitTextToSize(song[0], width/2 - 30);
+			} else if (lyrics.length == 2) {
+				const yP1 = 40;
+				const splitP1 = this.doc.splitTextToSize(lyrics[0], width - 40);
+				this.addParagraph(splitP1, 20, yP1);
+				const yP2 = yP1 + splitP1.length * lineHeight + 20;
+				const splitP2 = this.doc.splitTextToSize(lyrics[1], width - 40);
+				this.addParagraph(splitP2, 20, yP2);
+			} else if (lyrics.length == 3) {
+				const yP1 = 40;
+				const splitP1 = this.doc.splitTextToSize(lyrics[0], width - 40);
+				this.addParagraph(splitP1, 20, yP1);
+				const yP2 = yP1 + splitP1.length * lineHeight + 20;
+				const splitP2 = this.doc.splitTextToSize(lyrics[1], width - 40);
+				this.addParagraph(splitP2, 20, yP2);
+				const yP3 = yP2 + splitP2.length * lineHeight + 20;
+				const splitP3 = this.doc.splitTextToSize(lyrics[2], width - 40);
+				this.addParagraph(splitP3, 20, yP3);
+			} else if (lyrics.length >= 4) {
+				const splitP1 = this.doc.splitTextToSize(lyrics[0], width/2 - 30);
 				this.addParagraph(splitP1, 20, 40);
-				const splitP2 = this.doc.splitTextToSize(song[1], width/2 - 30);
+				const splitP2 = this.doc.splitTextToSize(lyrics[1], width/2 - 30);
 				this.addParagraph(splitP2, 20, height/2 + 10);
-				const splitP3 = this.doc.splitTextToSize(song[2], width/2 - 30);
+				const splitP3 = this.doc.splitTextToSize(lyrics[2], width/2 - 30);
 				this.addParagraph(splitP3, width/2 + 10, 40);
-				const splitP4 = this.doc.splitTextToSize(song[3], width/2 - 30);
+				const splitP4 = this.doc.splitTextToSize(lyrics[3], width/2 - 30);
 				this.addParagraph(splitP4, width/2 + 10, height/2 + 10);
 			}
-
 		},
 		addParagraph(paragraph, x, y) {
 			this.doc.setFontSize(20);
@@ -139,7 +164,7 @@ export default {
 				this.verseNumber++;
 			}
 		},
-		async getSongs() {
+		async getNonOrdinarySongs() {
 			const endpoint = "textes/chants/";
 			const entranceSong = (await axios.get(endpoint + this.entrance + ".txt"))
 				.data.split(/\r?\n\r?\n/);
@@ -190,7 +215,7 @@ export default {
 		},
 		async savePdf() {
 			const psalmChorus = await this.getPsalmChorus();
-			const [entranceSong, offertorySong, communionSong, sendingSong] = await this.getSongs();
+			const [entranceSong, offertorySong, communionSong, sendingSong] = await this.getNonOrdinarySongs();
 			
 			this.doc = new jsPDF({
 				orientation: "l",
@@ -200,7 +225,7 @@ export default {
 			const height = this.doc.internal.pageSize.getHeight();
 			this.doc.setTextColor(255, 255, 255);
 			
-			// page 1 (introduction)
+			// introduction
 			this.doc.setFillColor(33, 33, 33);
 			this.doc.rect(0, 0, width, height, 'F');
 			this.doc.setFontSize(60);
@@ -212,50 +237,71 @@ export default {
 			this.doc.text("Aumônerie de Beaulieu", width/2, 2*height/3, { align: 'center' });
 			this.doc.setTextColor(255, 255, 255);
 			
-			// page 2 (entrance)
+			// entrance
 			this.addPage();
-			this.addSong(this.entrance, entranceSong);
+			this.addNonOrdinarySong(this.entrance, entranceSong);
 
-			// page 3 (empty)
+			// empty
 			this.addPage();
 
-			// page 4 (psalm)
+			// kyrie
+			this.addPage();
+			this.addOrdinarySong("Kyrie", KYRIE_LATIN, KYRIE_FRENCH);
+
+			// empty
+			this.addPage();
+
+			// psalm
 			this.addPage();
 			this.doc.setFontSize(30);
 			const splitPsalmChorus = this.doc.splitTextToSize(psalmChorus, width - 40);
 			this.doc.text(splitPsalmChorus, width/2, height/2, { align: 'center' });
 
-			// page 5 (empty)
+			// empty
 			this.addPage();
 
-			// page 6 (universal prayer)
+			// universal prayer
 			this.addPage();
 			this.doc.setFontSize(30);
 			const splitUniversalPrayer = this.doc.splitTextToSize(this.universalPrayer, width - 40);
 			this.doc.text(splitUniversalPrayer, width/2, height/2, { align: 'center' });
 
-			// page 7 (empty)
+			// empty
 			this.addPage();
 
-			// page 8 (offertory)
+			// offertory
 			this.addPage();
-			this.addSong(this.offertory, offertorySong);
+			this.addNonOrdinarySong(this.offertory, offertorySong);
 
-			// page 9 (empty)
-			this.addPage();
-
-			// page 10 (communion)
-			this.addPage();
-			this.addSong(this.communion, communionSong);
-
-			// page 11 (empty)
+			// empty
 			this.addPage();
 
-			// page 12 (sending)
+			// sanctus
 			this.addPage();
-			this.addSong(this.sending, sendingSong);
+			this.addOrdinarySong("Sanctus", SANCTUS_LATIN, SANCTUS_FRENCH);
 
-			// page 13 (conclusion)
+			// empty
+			this.addPage();
+
+			// agnus
+			this.addPage();
+			this.addOrdinarySong("Agnus Dei", AGNUS_LATIN, AGNUS_FRENCH);
+
+			// empty
+			this.addPage();
+
+			// communion
+			this.addPage();
+			this.addNonOrdinarySong(this.communion, communionSong);
+
+			// empty
+			this.addPage();
+
+			// sending
+			this.addPage();
+			this.addNonOrdinarySong(this.sending, sendingSong);
+
+			// conclusion
 			this.addPage();
 			this.doc.setFontSize(30);
 			this.doc.text("Bonne soirée, et souriez, Jésus vous aime !", width/2, height/2, { align: 'center' });
